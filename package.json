@@ -1,10 +1,16 @@
 
 {
-  "name":"logic-challenge-multiplayer",
-  "version":"1.0.0",
-  "private":true,
-  "type":"module",
-  "scripts":{"start":"node server.js"},
-  "dependencies":{"ws":"^8.18.3"},
-  "engines":{"node":">=18"}
+  "name": "logic-challenge-multiplayer",
+  "version": "1.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.3"
+  },
+  "engines": {
+    "node": ">=18"
+  }
 }
