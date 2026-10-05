@@ -91,8 +91,10 @@ r.questions=pickQuestions(r.count,msg.level);
   if(msg.type==='answer'){
     if(r.phase!=='question'||msg.index!==r.index)return;
     if(Date.now()>r.questionEnd)return;
+    const q=r.questions[r.index];
+    if(!q||!Array.isArray(q.choices)){send(ws,'error',{message:'تعذر التحقق من السؤال الحالي.'});return;}
     const p=r[ws.role]; if(!p||r.answers[ws.role]!==null)return;
-    const choice=Number(msg.choice); if(!Number.isInteger(choice)||choice<0||choice>=q.choices.length)return;
+    const choice=Number(msg.choice); if(!Number.isInteger(choice)||choice<0||choice>=q.choices.length){send(ws,'error',{message:'الإجابة غير صالحة لهذا السؤال.'});return;}
     r.answers[ws.role]=choice; send(ws,'answerAccepted');
     const other=r[ws.role==='host'?'guest':'host'];
     if(other?.ws)send(other.ws,'opponentAnswered');
@@ -184,4 +186,4 @@ function buildQuestions(){
  ];
  for(let r=0;r<4;r++)for(const t of vars)add(t[0],t[1],t[2],t[3],t[4],t[5],r<1?'application':'deep');
  return q;
-}
+     }
