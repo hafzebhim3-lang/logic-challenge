@@ -66,7 +66,23 @@ function handle(ws,msg){
   if(msg.type==='start'&&ws.role==='host'){
     if(!r.guest){send(ws,'error',{message:'انتظر اللاعب الثاني.'});return}
     r.time=[15,20,30,45].includes(+msg.time)?+msg.time:20;r.count=Math.min(30,Math.max(5,+msg.count||10));
-    const pool=msg.level==='mixed'?QUESTIONS:QUESTIONS.filter(q=>q.level===msg.level);r.questions=shuffle(pool.length>=r.count?pool:QUESTIONS).slice(0,r.count);
+    const uniqueByText=arr=>{const seen=new Set();return arr.filter(q=>{const k=q.text+'|'+q.choices.join('¦');if(seen.has(k))return false;seen.add(k);return true})};
+const pickQuestions=(count,level)=>{
+  if(level!=='mixed'){
+    const pool=uniqueByText(QUESTIONS.filter(q=>q.level===level));
+    return shuffle(pool.length>=count?pool:uniqueByText(QUESTIONS)).slice(0,count);
+  }
+  const nF=Math.floor(count*0.2), nA=Math.floor(count*0.4), nD=count-nF-nA;
+  const take=(lvl,n)=>shuffle(uniqueByText(QUESTIONS.filter(q=>q.level===lvl))).slice(0,n);
+  let picked=[...take('foundation',nF),...take('application',nA),...take('deep',nD)];
+  if(picked.length<count){
+    const used=new Set(picked.map(q=>q.text+'|'+q.choices.join('¦')));
+    const rest=shuffle(uniqueByText(QUESTIONS)).filter(q=>!used.has(q.text+'|'+q.choices.join('¦')));
+    picked.push(...rest.slice(0,count-picked.length));
+  }
+  return shuffle(picked);
+};
+r.questions=pickQuestions(r.count,msg.level);
     r.index=0;r.started=true;r.phase='countdown';
     for(const k of ['host','guest']){Object.assign(r[k],{score:0,correct:0,wrong:0,blank:0})}
     broadcast(r,'countdown',{startAt:Date.now()+3000,serverNow:Date.now()});
@@ -76,7 +92,7 @@ function handle(ws,msg){
     if(r.phase!=='question'||msg.index!==r.index)return;
     if(Date.now()>r.questionEnd)return;
     const p=r[ws.role]; if(!p||r.answers[ws.role]!==null)return;
-    const choice=Number(msg.choice); if(!Number.isInteger(choice))return;
+    const choice=Number(msg.choice); if(!Number.isInteger(choice)||choice<0||choice>=q.choices.length)return;
     r.answers[ws.role]=choice; send(ws,'answerAccepted');
     const other=r[ws.role==='host'?'guest':'host'];
     if(other?.ws)send(other.ws,'opponentAnswered');
@@ -150,7 +166,7 @@ function buildQuestions(){
  ['لإثبات أن ∀x∈A,P(x) كاذبة، ماذا يكفي؟',['إثبات P لعنصر واحد','إيجاد a∈A بحيث ¬P(a)','إثبات ¬P لكل العناصر','لا شيء'],1,'عنصر واحد يخالف القضية الكلية هو مثال مضاد.','محاولة فحص جميع العناصر لإسقاط كلية.'],
  ['إذا كانت P: ∀x∈ℝ,x²+1>0، فما نفيها؟',['∀x∈ℝ,x²+1≤0','∃x∈ℝ,x²+1≤0','∃x∈ℝ,x²+1>0','∀x∈ℝ,x²+1<0'],1,'نفي ∀ يتحول إلى ∃، ونفي > هو ≤.','نفي المسوّر دون نفي العلاقة.'],
  ['للقضية P: ∀x∈ℝ,x²+1>0، ما قيمة ¬P؟',['T','F'],1,'لا يوجد حقيقي مربعه +1 أقل من أو يساوي صفرًا.','نسيان أن P و¬P قيمتهما متعاكسة.'],
- ['للقضية P: ∀x∈ℤ,x²≥x، هل يوجد مثال مضاد؟',['نعم، x=2','نعم، x=−1','لا','نعم، x=0'],1,'عند x=−1: 1≥−1 صحيحة؛ إذن ليس مثالًا مضادًا. لا يوجد مثال مضاد، فالعبارة صحيحة.','اختيار عنصر دون فحص العلاقة كاملة.'],
+ ['للقضية P: ∀x∈ℤ,x²≥x، هل يوجد مثال مضاد؟',['نعم، x=2','نعم، x=−1','لا','نعم، x=0'],2,'عند x=−1: 1≥−1 صحيحة؛ إذن ليس مثالًا مضادًا. لا يوجد مثال مضاد، فالعبارة صحيحة.','اختيار عنصر دون فحص العلاقة كاملة.'],
  ['أي مثال مضاد لـ ∀x∈ℝ,x²>x؟',['x=2','x=0','x=3','x=10'],1,'عند x=0 نحصل على 0²>0 أي 0>0، وهذا خطأ؛ لذلك x=0 مثال مضاد.','المثال المضاد يجب أن يجعل العبارة نفسها خاطئة.'],
  ['ما النفي الصحيح لـ ∃x∈ℕ,x>10؟',['∃x∈ℕ,x≤10','∀x∈ℕ,x≤10','∀x∈ℕ,x>10','¬∀x∈ℕ,x>10'],1,'نفي الوجود يتحول إلى لكل مع نفي العلاقة.','نسيان تغيير ∃ إلى ∀.'],
  ];
@@ -168,4 +184,4 @@ function buildQuestions(){
  ];
  for(let r=0;r<4;r++)for(const t of vars)add(t[0],t[1],t[2],t[3],t[4],t[5],r<1?'application':'deep');
  return q;
-                                        }
+}
